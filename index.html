@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <base target="_top">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Stock Opname Management System</title>
@@ -29,10 +28,7 @@
       display: flex;
       flex-direction: column;
     }
-    .navbar-brand {
-      font-weight: 700;
-      letter-spacing: -0.5px;
-    }
+    .navbar-brand { font-weight: 700; letter-spacing: -0.5px; }
     .card-custom {
       border: none;
       border-radius: 16px;
@@ -45,13 +41,8 @@
       border: 2px dashed #cbd5e1 !important;
       background: #f1f5f9;
     }
-    #reader video {
-      border-radius: 10px;
-    }
-    .form-control-lg, .btn-lg {
-      border-radius: 10px;
-      font-size: 1rem;
-    }
+    #reader video { border-radius: 10px; }
+    .form-control-lg, .btn-lg { border-radius: 10px; font-size: 1rem; }
     .info-label {
       font-size: 0.85rem;
       color: #64748b;
@@ -59,16 +50,8 @@
       letter-spacing: 0.5px;
       font-weight: 600;
     }
-    .info-value {
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: #0f172a;
-    }
-    .scanner-tabs {
-      background: #f1f5f9;
-      padding: 4px;
-      border-radius: 12px;
-    }
+    .info-value { font-size: 1.1rem; font-weight: 600; color: #0f172a; }
+    .scanner-tabs { background: #f1f5f9; padding: 4px; border-radius: 12px; }
     .scanner-tabs .nav-link {
       border-radius: 9px;
       font-weight: 600;
@@ -108,7 +91,7 @@
       <span class="navbar-brand mb-0 h1 d-flex align-items-center gap-2">
         <i class="bi bi-box-seam-fill text-primary"></i> Stock Opname <span class="badge bg-primary fs-6 fw-normal">Pro</span>
       </span>
-      <span class="text-white-50 small"><i class="bi bi-shield-check text-success"></i> Sistem Terhubung</span>
+      <span class="text-white-50 small"><i class="bi bi-shield-check text-success"></i> GitHub Terhubung</span>
     </div>
   </nav>
 
@@ -218,11 +201,13 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
+    // URL WEB APP APPS SCRIPT ANDA (Ganti dengan URL /exec Anda)
+    const API_URL = "https://script.google.com/macros/s/AKfycbzLcranWHmDElsyb39KztmzRf0E4fH5Q4jhF7zaQlCmwWMiqQxEZ89JzPyGStuigVdZdg/exec";
+
     let html5QrCode = null;
     let isScanningActive = false;
     let lastScannedCode = "";
 
-    // Inisialisasi Scanner Kamera
     function initScanner() {
       if (html5QrCode && isScanningActive) return;
       
@@ -277,24 +262,21 @@
       searchProduct(code);
     }
 
+    // Fungsi Cari Produk via Fetch API ke Google Apps Script
     function searchProduct(barcode) {
-      // Cek apakah berjalan di dalam environment Google Apps Script
-      if (typeof google === 'undefined' || !google.script || !google.script.run) {
-        showAlert("Error: Objek Google Apps Script tidak ditemukan. Pastikan Anda mengakses aplikasi melalui URL Web App (/exec), bukan file HTML lokal.", "danger");
-        return;
-      }
-
       showLoading("Mencari data produk...");
-      google.script.run
-        .withSuccessHandler(function(response) {
+      
+      fetch(`${API_URL}?action=getProduct&barcode=${encodeURIComponent(barcode)}`)
+        .then(response => response.json())
+        .then(res => {
           hideLoading();
-          if (response.status === "success") {
-            document.getElementById('resKategori').innerText = response.kategori || "-";
-            document.getElementById('resVarian').innerText = response.varian || "-";
-            document.getElementById('resQtySystem').innerText = response.qtySystem !== undefined ? response.qtySystem : "-";
-            document.getElementById('resBarcode').innerText = response.barcode;
-            document.getElementById('resRow').value = response.row;
-            document.getElementById('resRowBadge').innerText = "Baris " + response.row;
+          if (res.status === "success") {
+            document.getElementById('resKategori').innerText = res.kategori || "-";
+            document.getElementById('resVarian').innerText = res.varian || "-";
+            document.getElementById('resQtySystem').innerText = res.qtySystem !== undefined ? res.qtySystem : "-";
+            document.getElementById('resBarcode').innerText = res.barcode;
+            document.getElementById('resRow').value = res.row;
+            document.getElementById('resRowBadge').innerText = "Baris " + res.row;
             
             document.getElementById('resultCard').classList.remove('d-none');
             hideAlert();
@@ -305,25 +287,20 @@
             
             document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
           } else {
-            showAlert(response.message, "danger");
+            showAlert(res.message, "danger");
             document.getElementById('resultCard').classList.add('d-none');
           }
         })
-        .withFailureHandler(function(err) {
+        .catch(err => {
           hideLoading();
-          showAlert("Terjadi kesalahan koneksi server: " + err.message, "danger");
-        })
-        .getProductData(barcode);
+          showAlert("Terjadi kesalahan jaringan: " + err.message, "danger");
+        });
     }
 
+    // Fungsi Submit Qty Fisik via Fetch API POST ke Google Apps Script
     function handleFormSubmit(event) {
       event.preventDefault();
       
-      if (typeof google === 'undefined' || !google.script || !google.script.run) {
-        showAlert("Error: Objek Google Apps Script tidak ditemukan.", "danger");
-        return;
-      }
-
       const row = document.getElementById('resRow').value;
       const physicalQty = document.getElementById('physicalQty').value;
 
@@ -334,24 +311,24 @@
 
       showLoading("Menyimpan QTY SO ke Kolom G...");
 
-      google.script.run
-        .withSuccessHandler(function(response) {
-          hideLoading();
-          if (response.status === "success") {
-            showAlert("✅ Berhasil! QTY SO telah tersimpan ke Kolom G.", "success");
-            document.getElementById('resultCard').classList.add('d-none');
-            document.getElementById('manualBarcode').value = "";
-            document.getElementById('manualBarcode').focus();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          } else {
-            showAlert(response.message, "danger");
-          }
-        })
-        .withFailureHandler(function(err) {
-          hideLoading();
-          showAlert("Gagal menyimpan data: " + err.message, "danger");
-        })
-        .submitStockOpname(row, physicalQty);
+      fetch(API_URL, {
+        method: "POST",
+        mode: "no-cors", // Diperlukan untuk bypass CORS Google Apps Script
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "submitSO", row: row, physicalQty: physicalQty })
+      })
+      .then(() => {
+        hideLoading();
+        showAlert("✅ Berhasil! QTY SO telah dikirim ke Google Sheet (Kolom G).", "success");
+        document.getElementById('resultCard').classList.add('d-none');
+        document.getElementById('manualBarcode').value = "";
+        document.getElementById('manualBarcode').focus();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      })
+      .catch(err => {
+        hideLoading();
+        showAlert("Gagal mengirim data: " + err.message, "danger");
+      });
     }
 
     function showLoading(text) {
